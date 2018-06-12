@@ -1,0 +1,67 @@
+version: '3'
+
+networks:
+  http_network:
+    external: true
+  mastodon_network:
+    external: false
+
+services:
+  traefik:
+    image: traefik:1.6-alpine
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "443:443"
+    labels:
+      - traefik.enable=true
+      - traefik.frontend.rule=Host:traefik.example.com
+      - traefik.port=8080
+      - traefik.docker.network=http_network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /home/docker/traefik/traefik.toml:/traefik.toml:ro
+      - /home/docker/traefik/acme:/etc/traefik/acme
+    networks:
+      - http_network
+
+  mastodon-db:
+    image: postgres:9.6-alpine
+    container_name: mastodon-db
+    volumes:
+      - /home/docker/mastodon/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=supersecret
+      - POSTGRES_USER=mastodon
+      - POSTGRES_DB=mastodon
+    networks:
+      - mastodon_network
+
+  mastodon-redis:
+    image: redis:4.0-alpine
+    container_name: mastodon-redis
+    volumes:
+      - /home/docker/mastodon/redis:/data
+    networks:
+      - mastodon_network
+
+  mastodon:
+    image: wonderfall/mastodon
+    container_name: mastodon
+    env_file: /home/docker/mastodon/.env.production
+    volumes:
+      - /home/docker/mastodon/data:/mastodon/public/system
+      - /home/docker/mastodon/logs:/mastodon/log
+    networks:
+      - mastodon_network
+      - http_network
+    depends_on:
+      - mastodon-db
+      - mastodon-redis
+    labels:
+      - traefik.enable=true
+      - traefik.webui.frontend.rule=Host:example.com
+      - traefik.webui.port=3000
+      - traefik.streaming.frontend.rule=Host:example.com;PathPrefixStrip:/api/v1/streaming
+      - traefik.streaming.port=4000
+      - traefik.docker.network=http_network
