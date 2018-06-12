@@ -1,0 +1,3 @@
+#!/bin/sh
+cd /mastodon
+exec bundle exec puma -C config/puma.rb > ./log/web.log 2>&1
