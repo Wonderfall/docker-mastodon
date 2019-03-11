@@ -1,6 +1,6 @@
-FROM ruby:2.4.4-alpine3.7
+FROM ruby:2.6.1-alpine3.9
 
-ARG VERSION=v2.4.3
+ARG VERSION=v2.7.4
 ARG REPOSITORY=tootsuite/mastodon
 ARG LIBICONV_VERSION=1.15
 
@@ -24,10 +24,12 @@ RUN apk -U upgrade \
     icu-libs \
     imagemagick \
     libidn \
+    libxml2 \
+    libxslt \
     libpq \
-    libressl \
-    nodejs-npm \
     nodejs \
+    npm \
+    openssl \
     protobuf \
     s6 \
     su-exec \
@@ -39,6 +41,8 @@ RUN apk -U upgrade \
     icu-dev \
     libidn-dev \
     libtool \
+    libxml2-dev \
+    libxslt-dev \
     postgresql-dev \
     protobuf-dev \
     python \
@@ -58,12 +62,12 @@ RUN apk -U upgrade \
 # Install Mastodon
  && cd /mastodon \
  && wget -qO- https://github.com/${REPOSITORY}/archive/${VERSION}.tar.gz | tar xz --strip 1 \
- && bundle config build.nokogiri --with-iconv-lib=/usr/local/lib --with-iconv-include=/usr/local/include \
+ && bundle config build.nokogiri --use-system-libraries --with-iconv-lib=/usr/local/lib --with-iconv-include=/usr/local/include \
  && bundle install -j$(getconf _NPROCESSORS_ONLN) --deployment --clean --no-cache --without test development \
- && yarn --ignore-optional --pure-lockfile \
+ && yarn install --pure-lockfile --ignore-engines \
 
 # Precompile Mastodon assets
- && SECRET_KEY_BASE=$(bundle exec rake secret) OTP_SECRET=$(bundle exec rake secret) SMTP_FROM_ADDRESS= bundle exec rake assets:precompile \
+ && OTP_SECRET=precompile_placeholder SECRET_KEY_BASE=precompile_placeholder bundle exec rails assets:precompile \
 
 # Clean
  && npm -g --force cache clean && yarn cache clean \
