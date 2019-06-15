@@ -1,6 +1,6 @@
 FROM ruby:2.6.1-alpine3.9
 
-ARG VERSION=v2.7.4
+ARG VERSION=v2.9.0
 ARG REPOSITORY=tootsuite/mastodon
 ARG LIBICONV_VERSION=1.15
 
