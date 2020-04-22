@@ -1,6 +1,6 @@
 FROM ruby:2.6.1-alpine3.9
 
-ARG VERSION=v2.9.4
+ARG VERSION=v3.1.3
 ARG REPOSITORY=tootsuite/mastodon
 ARG LIBICONV_VERSION=1.15
 
@@ -10,6 +10,7 @@ ENV UID=991 GID=991 \
     RAILS_SERVE_STATIC_FILES=true \
     RAILS_ENV=production \
     NODE_ENV=production \
+    BIND=0.0.0.0 \
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/mastodon/bin
 
 WORKDIR /mastodon
