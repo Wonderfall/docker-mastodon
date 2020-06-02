@@ -1,12 +1,13 @@
-FROM ruby:2.6.1-alpine3.9
+FROM ruby:2.6.6-alpine3.11
 
-ARG VERSION=v2.9.0
+ARG VERSION=v3.1.4
 ARG REPOSITORY=tootsuite/mastodon
 ARG LIBICONV_VERSION=1.15
 
 ENV UID=991 GID=991 \
     RUN_DB_MIGRATIONS=true \
     SIDEKIQ_WORKERS=5 \
+    BIND=0.0.0.0 \
     RAILS_SERVE_STATIC_FILES=true \
     RAILS_ENV=production \
     NODE_ENV=production \
@@ -34,6 +35,9 @@ RUN apk -U upgrade \
     s6 \
     su-exec \
     tzdata \
+    yaml \
+    readline \
+    gcompat \
 
 # Install build dependencies
  && apk add -t build-dependencies \
