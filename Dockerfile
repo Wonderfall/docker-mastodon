@@ -49,7 +49,7 @@ RUN apk -U upgrade \
     libxslt-dev \
     postgresql-dev \
     protobuf-dev \
-    python \
+    python3 \
     tar \
     yarn \
 
