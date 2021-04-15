@@ -9,7 +9,7 @@ ___
 - As a consequence to that, a newer image should drop all the `chown` instructions at startup time: no more seconds of waiting, even minutes if you're using overlayfs as the storage driver (which is Docker's default). This was fine for flexibility, but users should really learn how to manage the permissions of their volumes.
 - It's a pain to maintain, since Mastodon is a very bloated software full of features but also full of dependencies. The streaming server wasn't properly working on 3.3.0 due to an incompatible node.js version.
 
-As I said, I'll keep "maintaing" it for now (I always though of my images as being bases for you own images, really don't run Docker images from random dudes like me from the Internet), but I'll eventually make a brand new image sometime soon. Meaning, you should be prepared to maintain or make your own image, or use the "official one" *(which I'm not a fan of)*. Above all, take care and take security seriously.
+As I said, I'll keep "maintaing" it for now (I always thought of my images as being bases for you own images, really __don't run Docker images from random dudes__ like me from the Internet), but I'll eventually make a brand new image sometime soon. Meaning, you should be prepared to maintain or make your own image, or use the "official one" *(which I'm not a fan of)*. Above all, take care and take security seriously.
 
 ___
 
