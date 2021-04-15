@@ -1,4 +1,4 @@
-FROM ruby:2.7.2-alpine3.13
+FROM ruby:2.7.3-alpine3.13
 
 ARG VERSION=v3.3.0
 ARG REPOSITORY=tootsuite/mastodon
