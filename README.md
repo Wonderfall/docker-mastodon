@@ -4,12 +4,12 @@ A GNU Social-compatible microblogging server : https://github.com/tootsuite/mast
 
 ___
 
-⚠️**DEPRECIATED**: don't worry, I'll keep maintaing it for a while. This image was made years ago and needs some rework:
+⚠️**DEPRECATED**: don't worry, I'll keep maintaing it for a while. This image was made years ago and needs some rework:
 - For instance it uses `su-exec` to degrade privileges, which is fine as an attempt to get a *rootless running* image, but more secure ways to make sure *root* is never used should be preferred.
 - As a consequence to that, a newer image should drop all the `chown` instructions at startup time: no more seconds of waiting, even minutes if you're using overlayfs as the storage driver (which is Docker's default). This was fine for flexibility, but users should really learn how to manage the permissions of their volumes.
 - It's a pain to maintain, since Mastodon is a very bloated software full of features but also full of dependencies. The streaming server wasn't properly working on 3.3.0 due to an incompatible node.js version.
 
-As I said, I'll keep "maintaing" it for now (I always thought of my images as being bases for your own images, really __don't run Docker images from random dudes__ like me from the Internet), but I'll eventually make a brand new image sometime soon. Meaning, you should be prepared to maintain or make your own image, or use the "official one" *(which I'm not a fan of)*. Above all, take care and take security seriously.
+As I said, I'll keep "maintaining" it for now (I always thought of my images as being bases for your own images, really __don't run Docker images from random dudes__ like me from the Internet), but I'll eventually make a brand new image sometime soon. Meaning, you should be prepared to maintain or make your own image, or use the "official one" *(which I'm not a fan of)*. Above all, take care and take security seriously.
 
 ___
 
