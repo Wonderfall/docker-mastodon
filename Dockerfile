@@ -91,11 +91,17 @@ RUN wget -q https://unofficial-builds.nodejs.org/download/release/v$NODE_VERSION
 # Clean
  && npm -g --force cache clean && yarn cache clean \
  && apk del build-dependencies \
- && rm -rf /var/cache/apk/* /tmp/src
+ && rm -rf /var/cache/apk/* /tmp/src \
 
-COPY rootfs /
+# Create mastodon user \
+ && adduser -g ${GID} -u ${UID} --disabled-password --gecos "" mastodon \
+ && chown -R mastodon:mastodon /mastodon
+
+COPY --chown=mastodon:mastodon rootfs /
 
 RUN chmod +x /usr/local/bin/* /etc/s6.d/*/* /etc/s6.d/.s6-svscan/*
+
+USER mastodon
 
 VOLUME /mastodon/public/system /mastodon/log
 
