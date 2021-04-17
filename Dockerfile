@@ -47,7 +47,6 @@ RUN wget -q https://unofficial-builds.nodejs.org/download/release/v$NODE_VERSION
     openssl \
     protobuf \
     s6 \
-    su-exec \
     tzdata \
     yaml \
     readline \
