@@ -13,7 +13,9 @@ As I said, I'll keep "maintaining" it for now (I always thought of my images as 
 
 ___
 
-**Note (Apr. 2021)**: currently Mastodon "stable" can't be built beacause of some [yanked packages](https://github.com/tootsuite/mastodon/issues/15986). Not only that, but the streaming component refuses to work correctly with node v14. This is fixed in main.
+**Note (Apr. 2021)**:
+- Currently Mastodon "stable" can't be built beacause of some [yanked packages](https://github.com/tootsuite/mastodon/issues/15986). Not only that, but the streaming component refuses to work correctly with node v14. This is fixed in main.
+- This image is being reworked. Expect some changes, though I try not to break anything.
 
 #### Why this image?
 This image is not the official one. The main difference you can notice is that all processes (web, streaming, sidekiq) are running in a single container, thanks to s6 (a supervision suite). Therefore it's easier to deploy, but not recommended for scaling.

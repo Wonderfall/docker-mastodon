@@ -1,12 +1,5 @@
 #!/bin/sh
 
-### 1. Adds local user (UID and GID are provided from environment variables).
-### 2. Moves precompiled assets into them.
-### 3. Updates permissions, except for ./public/system (should be chown on previous installations).
-###    NOTE : this can take a long time if overlay2 is the storage-driver (issue #3194).
-### 4. If $RUN_DB_MIGRATIONS is set to true, runs the database migrations task.
-### 5. Executes the command as that user.
-
 echo "
 ---------------------------------------------
      _____         _         _
@@ -16,7 +9,6 @@ echo "
 
 A GNU Social-compatible microblogging server
    https://github.com/tootsuite/mastodon
-    17j2g7vpgHhLuXhN4bueZFCvdxxieyRVWd
 ---------------------------------------------
 UID/GID settings
 ---------------------------------------------
@@ -36,7 +28,7 @@ addgroup -g ${GID} mastodon &>/dev/null
 adduser -h /mastodon -s /bin/sh -D -G mastodon -u ${UID} mastodon &>/dev/null
 
 echo "Updating permissions, this can take a while..."
-find /mastodon -path /mastodon/public/system -prune -o -not -user mastodon -not -group mastodon -print0 | xargs -0 chown -f mastodon:mastodon
+find /mastodon -path /mastodon/public/system -prune -o -print0 | xargs -0 chown -f mastodon:mastodon
 chown -R mastodon:mastodon /etc/s6.d
 
 if [ "$RUN_DB_MIGRATIONS" == "true" ]; then
