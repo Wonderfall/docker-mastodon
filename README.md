@@ -23,12 +23,12 @@ Don't run random images from random dudes on the Internet. Ideally, you want to 
 
 ## Environment variables you should change
 
-|          Variable         |         Description        |       Default      |
-| ------------------------- | -------------------------- | ------------------ |
-|           **UID**         | user id (rebuild to change)|         991        |
-|           **GID**         | group id (rebuld to change)|         991        |
-|    **RUN_DB_MIGRATIONS**  | run migrations at startup  |        true        |
-|    **SIDEKIQ_WORKERS**    | number of Sidekiq workers  |          5         |
+|          Variable         |         Description         |       Default      |
+| ------------------------- | --------------------------- | ------------------ |
+|           **UID**         | user id (rebuild to change) |         991        |
+|           **GID**         | group id (rebuild to change)|         991        |
+|    **RUN_DB_MIGRATIONS**  | run migrations at startup   |        true        |
+|    **SIDEKIQ_WORKERS**    | number of Sidekiq workers   |          5         |
 
 Don't forget to provide [an environment file](https://github.com/tootsuite/mastodon/blob/main/.env.production.sample) for Mastodon itself.
 
