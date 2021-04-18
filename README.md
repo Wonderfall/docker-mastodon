@@ -1,47 +1,124 @@
-## wonderfall/mastodon
+# wonderfall/mastodon
+*Your self-hosted, globally interconnected microblogging community.*
 
-A GNU Social-compatible microblogging server : https://github.com/tootsuite/mastodon
+Mastodon [official website](https://joinmastodon.org/) and [source code](https://github.com/tootsuite/mastodon/).
 
-___
+## Why this image?
+This non-official image is intended as an **all-in-one** Mastodon **production** image. You should use [the official image](https://hub.docker.com/r/tootsuite/mastodon) for development purpose or if you want scalability.
 
-⚠️**DEPRECATED**: don't worry, I'll keep maintaing it for a while. This image was made years ago and needs some rework:
-- For instance it uses `su-exec` to degrade privileges, which is fine as an attempt to get a *rootless running* image, but more secure ways to make sure *root* is never used should be preferred.
-- As a consequence to that, a newer image should drop all the `chown` instructions at startup time: no more seconds of waiting, even minutes if you're using overlayfs as the storage driver (which is Docker's default). This was fine for flexibility, but users should really learn how to manage the permissions of their volumes.
-- It's a pain to maintain, since Mastodon is a very bloated software full of features but also full of dependencies. The streaming server wasn't properly working on 3.3.0 due to an incompatible node.js version.
+## Security
+Don't run random images from random dudes on the Internet. Ideally, you want to maintain and build it yourself.
 
-As I said, I'll keep "maintaining" it for now (I always thought of my images as being bases for your own images, really __don't run Docker images from random dudes__ like me from the Internet), but I'll eventually make a brand new image sometime soon. Meaning, you should be prepared to maintain or make your own image, or use the "official one" *(which I'm not a fan of)*. Above all, take care and take security seriously.
+## Features
+- Rootless image
+- Based on Alpine Linux
+- Includes [hardened_malloc](https://github.com/GrapheneOS/hardened_malloc)
+- Precompiled assets for Mastodon
 
-___
+## Build-time variables
+|          Variable         |         Description        |       Default      |
+| ------------------------- | -------------------------- | ------------------ |
+| **MASTODON_VERSION**      | version/commit of Mastodon |         N/A        |
+| **REPOSITORY**            | source of Mastodon         | tootsuite/mastodon |
 
-**Note (Apr. 2021)**:
-- Currently Mastodon "stable" can't be built beacause of some [yanked packages](https://github.com/tootsuite/mastodon/issues/15986). Not only that, but the streaming component refuses to work correctly with node v14. This is fixed in main.
-- This image is being reworked. Expect some changes, though I try not to break anything.
+## Environment variables you should change
 
-#### Why this image?
-This image is not the official one. The main difference you can notice is that all processes (web, streaming, sidekiq) are running in a single container, thanks to s6 (a supervision suite). Therefore it's easier to deploy, but not recommended for scaling.
+|          Variable         |         Description        |       Default      |
+| ------------------------- | -------------------------- | ------------------ |
+|           **UID**         | user id (rebuild to change)|         991        |
+|           **GID**         | group id (rebuld to change)|         991        |
+|    **RUN_DB_MIGRATIONS**  | run migrations at startup  |        true        |
+|    **SIDEKIQ_WORKERS**    | number of Sidekiq workers  |          5         |
 
-#### Features
-- Based on Alpine Linux.
-- As lightweight as possible.
-- All-in-one container (s6).
-- Assets are precompiled.
-- No root processes.
+Don't forget to provide [an environment file](https://github.com/tootsuite/mastodon/blob/main/.env.production.sample) for Mastodon itself.
 
-#### Build-time variables
-- **VERSION** : version of Mastodon *(default : latest version)*
-- **REPOSITORY** : location of the code *(default : tootsuite/mastodon)*
+## Volumes
+|          Variable            |         Description        |
+| -------------------------    | -------------------------- |
+| **/mastodon/public/system**  |         data files         |
+| **/mastodon/log**            |            logs            |
 
-#### Environment variables you should change
-- **UID** : mastodon user id *(default : 991)*
-- **GID** : mastodon group id *(default : 991)*
-- **RUN_DB_MIGRATIONS** : run database migrations at startup *(default : true)*
-- **SIDEKIQ_WORKERS** :  number of Sidekiq workers *(default : 5)*
-- Other environment variables : https://github.com/tootsuite/mastodon/blob/master/.env.production.sample
+## Ports
+|              Port            |            Use             |
+| -------------------------    | -------------------------- |
+| **3000**                     |        Mastodon web        |
+| **4000**                     |      Mastodon streaming    |
 
-#### Volumes
-- **/mastodon/public/system** : Mastodon files
-- **/mastodon/log** : Mastodon logfiles (mount if you prefer to)
+## docker-compose example
+Please use your own settings and adjust this example to your needs.
+Here I use Traefik v2 (already configured to redirect 80 to 443 globally).
 
-#### Ports
-- **3000** : web
-- **4000** : streaming
+```yaml
+version: '2.4'
+
+networks:
+  http_network:
+    external: true
+
+  mastodon_network:
+    external: false
+    internal: true
+
+services:
+  mastodon:
+    image: wonderfall/mastodon
+    container_name: mastodon
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    env_file: /wherever/docker/mastodon/.env.production
+    depends_on:
+      - mastodon-db
+      - mastodon-redis
+    volumes:
+      - /wherever/docker/mastodon/data:/mastodon/public/system
+      - /wherever/docker/mastodon/logs:/mastodon/log
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.mastodon-web-secure.entrypoints=https
+      - traefik.http.routers.mastodon-web-secure.rule=Host(`domain.tld`)
+      - traefik.http.routers.mastodon-web-secure.tls=true
+      - traefik.http.routers.mastodon-web-secure.middlewares=hsts-headers@file
+      - traefik.http.routers.mastodon-web-secure.tls.certresolver=http
+      - traefik.http.routers.mastodon-web-secure.service=mastodon-web
+      - traefik.http.services.mastodon-web.loadbalancer.server.port=3000
+      - traefik.http.routers.mastodon-streaming-secure.entrypoints=https
+      - traefik.http.routers.mastodon-streaming-secure.rule=Host(`domain.tld`) && PathPrefix(`/api/v1/streaming`)
+      - traefik.http.routers.mastodon-streaming-secure.tls=true
+      - traefik.http.routers.mastodon-streaming-secure.middlewares=hsts-headers@file
+      - traefik.http.routers.mastodon-streaming-secure.tls.certresolver=http
+      - traefik.http.routers.mastodon-streaming-secure.service=mastodon-streaming
+      - traefik.http.services.mastodon-streaming.loadbalancer.server.port=4000
+      - traefik.docker.network=http_network
+    networks:
+      - mastodon_network
+      - http_network
+ 
+   mastodon-redis:
+    image: redis:alpine
+    container_name: mastodon-redis
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /wherever/docker/mastodon/redis:/data
+    networks:
+      - mastodon_network
+
+  mastodon-db:
+    image: postgres:9.6-alpine
+    container_name: mastodon-db
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /wherever/docker/mastodon/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=mastodon
+      - POSTGRES_DB=mastodon
+      - POSTGRES_PASSWORD=supersecretpassword
+    networks:
+      - mastodon_network
+```
+
+*This image has been tested and works great with the [gVisor runtime](https://gvisor.dev/).*
