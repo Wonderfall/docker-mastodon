@@ -1,7 +1,9 @@
-# Build Mastodon stack base (Ruby + Node)
-FROM ruby:2.7.3-alpine3.13 as node-ruby
+ARG RUBY_VERSION=2.7.3
+ARG NODE_VERSION=14.6.1
+ARG ALPINE_VERSION=3.13
 
-ARG NODE_VERSION=14.16.1
+# Build Mastodon stack base (Ruby + Node)
+FROM ruby:${RUBY_VERSION}-alpine${ALPINE_VERSION} as node-ruby
 
 RUN wget -q https://unofficial-builds.nodejs.org/download/release/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64-musl.tar.xz \
  && mkdir /opt/node && tar -Jxf node-v$NODE_VERSION-linux-x64-musl.tar.xz -C /opt/node --strip-components 1 \
@@ -9,7 +11,7 @@ RUN wget -q https://unofficial-builds.nodejs.org/download/release/v$NODE_VERSION
 
 
 # Build Hardened Malloc
-FROM alpine:3.13 as build-malloc
+FROM alpine:${ALPINE_VERSION} as build-malloc
 
 ARG HARDENED_MALLOC_VERSION=7
 
@@ -20,7 +22,7 @@ RUN apk --no-cache add build-base && cd /tmp \
 
 
 # Build GNU Libiconv (needed for nokogiri)
-FROM alpine:3.13 as build-gnulibiconv
+FROM alpine:${ALPINE_VERSION} as build-gnulibiconv
 
 ARG LIBICONV_VERSION=1.16
 
