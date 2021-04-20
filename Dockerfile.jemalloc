@@ -1,5 +1,5 @@
 # Build Jemalloc
-FROM alpine:${ALPINE_VERSION} as build-jemalloc
+FROM alpine:3.13 as build-jemalloc
 
 ARG JEMALLOC_VERSION=5.2.1
 
