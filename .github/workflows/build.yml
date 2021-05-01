@@ -20,7 +20,7 @@ jobs:
 
       - name: Build an image from Dockerfile
         run: |
-          docker build -t ghcr.io/$GITHUB_ACTOR/mastodon .
+          docker build ghcr.io/$GITHUB_ACTOR/mastodon .
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
