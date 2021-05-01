@@ -7,11 +7,12 @@ on:
     # The branches below must be a subset of the branches above
     branches: [ master ]
   schedule:
-    - cron: '37 20 * * 3'
+    # Build the image regularly (each Friday)
+    - cron: '13 22 * * 5'
 
 jobs:
   build:
-    name: Build
+    name: Build, scan & push
     runs-on: "ubuntu-18.04"
     steps:
       - name: Checkout code
@@ -19,18 +20,28 @@ jobs:
 
       - name: Build an image from Dockerfile
         run: |
-          docker build -t mastodon .
+          docker build -t ghcr.io/$GITHUB_ACTOR/mastodon .
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'mastodon'
+          image-ref: 'ghcr.io/$GITHUB_ACTOR/mastodon'
           format: 'template'
           template: '@/contrib/sarif.tpl'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+          vuln-type: "os"
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v1
         with:
           sarif_file: 'trivy-results.sarif'
+
+      - name: Docker login
+        run: >-
+          echo "${{ secrets.GHCR_TOKEN }}"
+          | docker login -u "${{ github.actor }}" --password-stdin ghcr.io
+          
+      - name: Push image to GitHub
+        run: |
+          docker push ghcr.io/$GITHUB_ACTOR/mastodon
