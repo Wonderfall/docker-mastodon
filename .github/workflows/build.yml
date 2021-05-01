@@ -44,4 +44,4 @@ jobs:
           
       - name: Push image to GitHub
         run: |
-          docker push ghcr.io/$GITHUB_ACTOR/mastodon
+          docker push ghcr.io/wonderfall/mastodon
