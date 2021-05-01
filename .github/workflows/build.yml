@@ -20,12 +20,12 @@ jobs:
 
       - name: Build an image from Dockerfile
         run: |
-          docker build ghcr.io/$GITHUB_ACTOR/mastodon .
+          docker build -t ghcr.io/wonderfall/mastodon .
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'ghcr.io/$GITHUB_ACTOR/mastodon'
+          image-ref: 'ghcr.io/wonderfall/mastodon'
           format: 'template'
           template: '@/contrib/sarif.tpl'
           output: 'trivy-results.sarif'
