@@ -3,9 +3,6 @@ name: build
 on:
   push:
     branches: [ master ]
-  pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [ master ]
   schedule:
     # Build the image regularly (each Friday)
     - cron: '13 22 * * 5'
