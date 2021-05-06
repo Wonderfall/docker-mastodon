@@ -17,7 +17,10 @@ jobs:
 
       - name: Build an image from Dockerfile
         run: |
-          docker build -t ghcr.io/wonderfall/mastodon .
+          docker build \
+              -t ghcr.io/wonderfall/mastodon \
+              -t ghcr.io/wonderfall/mastodon:$(grep -oP '(?<=MASTODON_VERSION=).*' Dockerfile | head -c8) \
+              .
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -42,3 +45,4 @@ jobs:
       - name: Push image to GitHub
         run: |
           docker push ghcr.io/wonderfall/mastodon
+          docker push ghcr.io/wonderfall/mastodon:$(grep -oP '(?<=MASTODON_VERSION=).*' Dockerfile | head -c8)
