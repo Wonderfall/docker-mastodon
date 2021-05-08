@@ -20,6 +20,7 @@ jobs:
           docker build \
               -t ghcr.io/wonderfall/mastodon \
               -t ghcr.io/wonderfall/mastodon:$(grep -oP '(?<=MASTODON_VERSION=).*' Dockerfile | head -c8) \
+              -t ghcr.io/wonderfall/mastodon:$(grep -oP '(?<=MASTODON_VERSION=).*' Dockerfile | head -c3) \
               .
 
       - name: Run Trivy vulnerability scanner
@@ -46,3 +47,4 @@ jobs:
         run: |
           docker push ghcr.io/wonderfall/mastodon
           docker push ghcr.io/wonderfall/mastodon:$(grep -oP '(?<=MASTODON_VERSION=).*' Dockerfile | head -c8)
+          docker push ghcr.io/wonderfall/mastodon:$(grep -oP '(?<=MASTODON_VERSION=).*' Dockerfile | head -c3)
