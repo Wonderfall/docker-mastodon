@@ -1,5 +1,5 @@
 # -------------- Build-time variables --------------
-ARG MASTODON_VERSION=baed52c2a7d8f91bae3c69150005fc528387785c
+ARG MASTODON_VERSION=3.4.0rc1
 ARG MASTODON_REPOSITORY=tootsuite/mastodon
 
 ARG RUBY_VERSION=2.7.3
@@ -100,7 +100,7 @@ RUN apk --no-cache add \
     python3 \
     imagemagick \
 # Install Mastodon
- && wget -qO- https://github.com/${MASTODON_REPOSITORY}/archive/${MASTODON_VERSION}.tar.gz | tar xz --strip 1 \
+ && wget -qO- https://github.com/${MASTODON_REPOSITORY}/archive/v${MASTODON_VERSION}.tar.gz | tar xz --strip 1 \
  && bundle config build.nokogiri --use-system-libraries --with-iconv-lib=/usr/local/lib --with-iconv-include=/usr/local/include \
  && bundle config set --local clean 'true' && bundle config set --local deployment 'true' \
  && bundle config set --local without 'test development' && bundle config set no-cache 'true' \
