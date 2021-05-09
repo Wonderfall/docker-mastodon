@@ -10,6 +10,9 @@ jobs:
     name: Scan current image & report results
     runs-on: "ubuntu-20.04"
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
