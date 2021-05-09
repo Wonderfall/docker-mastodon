@@ -1,9 +1,9 @@
-name: build
+name: scan
 
 on:
   schedule:
     # Scan the image regularly (once a day)
-    - cron: '13 02 * * *'
+    - cron: '45 02 * * *'
 
 jobs:
   build:
