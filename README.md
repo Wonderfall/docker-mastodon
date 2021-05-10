@@ -4,16 +4,25 @@
 Mastodon [official website](https://joinmastodon.org/) and [source code](https://github.com/tootsuite/mastodon/).
 
 ## Why this image?
-This non-official image is intended as an **all-in-one** Mastodon **production** image. You should use [the official image](https://hub.docker.com/r/tootsuite/mastodon) for development purpose or if you want scalability.
+This non-official image is intended as an **all-in-one** (as in monolithic) Mastodon **production** image. You should use [the official image](https://hub.docker.com/r/tootsuite/mastodon) for development purpose or if you want scalability.
 
 ## Security
 Don't run random images from random dudes on the Internet. Ideally, you want to maintain and build it yourself.
+
+Images are scanned every day by [Trivy](https://github.com/aquasecurity/trivy) for OS vulnerabilities. They are rebuilt once a week, so you should often update your images regardless of your Mastodon version.
 
 ## Features
 - Rootless image
 - Based on Alpine Linux
 - Includes [hardened_malloc](https://github.com/GrapheneOS/hardened_malloc)
 - Precompiled assets for Mastodon
+
+## Tags
+- `latest` : latest Mastodon version (or working commit)
+- `x.x` : latest Mastodon x.x (e.g. `3.4`)
+- `x.x.x` : Mastodon x.x.x (including release candidates)
+
+You can always have a glance [here](https://github.com/users/Wonderfall/packages/container/package/mastodon).
 
 ## Build-time variables
 |          Variable         |         Description        |       Default      |
@@ -61,7 +70,7 @@ networks:
 
 services:
   mastodon:
-    image: wonderfall/mastodon
+    image: ghcr.io/wonderfall/mastodon
     container_name: mastodon
     restart: unless-stopped
     security_opt:
