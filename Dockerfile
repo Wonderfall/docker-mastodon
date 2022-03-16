@@ -1,9 +1,9 @@
 # -------------- Build-time variables --------------
-ARG MASTODON_VERSION=3.4.6
+ARG MASTODON_VERSION=3.5.0rc1
 ARG MASTODON_REPOSITORY=tootsuite/mastodon
 
-ARG RUBY_VERSION=2.7
-ARG NODE_VERSION=14
+ARG RUBY_VERSION=3.0
+ARG NODE_VERSION=16
 ARG ALPINE_VERSION=3.15
 ARG HARDENED_MALLOC_VERSION=11
 ARG LIBICONV_VERSION=1.16
@@ -71,6 +71,8 @@ ENV RUN_DB_MIGRATIONS=true \
 
 WORKDIR /mastodon
 
+COPY ruby-hotfix.patch .
+
 # Install runtime dependencies
 RUN apk --no-cache add \
     ca-certificates \
@@ -84,7 +86,6 @@ RUN apk --no-cache add \
     libxslt \
     libpq \
     openssl \
-    protobuf \
     s6 \
     tzdata \
     yaml \
@@ -98,10 +99,12 @@ RUN apk --no-cache add \
     libtool \
     libxml2-dev \
     libxslt-dev \
+    patch \
     postgresql-dev \
-    protobuf-dev \
     python3 \
     imagemagick \
+# Ruby hotfix (https://github.com/ruby/ruby/pull/4429)
+ && patch -u /usr/local/include/ruby-3.0.0/ruby/internal/memory.h -i /mastodon/ruby-hotfix.patch \
 # Install Mastodon
  && wget -qO- https://github.com/${MASTODON_REPOSITORY}/archive/v${MASTODON_VERSION}.tar.gz | tar xz --strip 1 \
  && bundle config build.nokogiri --use-system-libraries --with-iconv-lib=/usr/local/lib --with-iconv-include=/usr/local/include \
