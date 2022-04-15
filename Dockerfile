@@ -103,8 +103,6 @@ RUN apk --no-cache add \
     postgresql-dev \
     python3 \
     imagemagick \
-# Ruby hotfix (https://github.com/ruby/ruby/pull/4429)
- && patch -u /usr/local/include/ruby-3.0.0/ruby/internal/memory.h -i /mastodon/ruby-hotfix.patch \
 # Install Mastodon
  && wget -qO- https://github.com/${MASTODON_REPOSITORY}/archive/v${MASTODON_VERSION}.tar.gz | tar xz --strip 1 \
  && bundle config build.nokogiri --use-system-libraries --with-iconv-lib=/usr/local/lib --with-iconv-include=/usr/local/include \
