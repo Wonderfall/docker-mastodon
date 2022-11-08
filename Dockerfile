@@ -71,8 +71,6 @@ ENV RUN_DB_MIGRATIONS=true \
 
 WORKDIR /mastodon
 
-COPY ruby-hotfix.patch .
-
 # Install runtime dependencies
 RUN apk --no-cache add \
     ca-certificates \
