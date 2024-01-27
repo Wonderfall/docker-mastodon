@@ -1,5 +1,5 @@
 # -------------- Build-time variables --------------
-ARG MASTODON_VERSION=4.2.3
+ARG MASTODON_VERSION=4.2.4
 ARG MASTODON_REPOSITORY=tootsuite/mastodon
 
 ARG RUBY_VERSION=3.0
