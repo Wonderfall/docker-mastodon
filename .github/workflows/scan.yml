@@ -5,9 +5,6 @@ on:
   schedule:
     - cron: "0 3 * * *"
 
-env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/mastodon:latest
-
 permissions: {}
 
 concurrency:
@@ -22,10 +19,18 @@ jobs:
     permissions: {}
 
     steps:
+      - name: Normalize image name
+        id: image
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          owner="$(printf '%s' "${REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          echo "name=ghcr.io/${owner}/mastodon" >>"${GITHUB_OUTPUT}"
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.35.0
         with:
-          image-ref: ${{ env.IMAGE_NAME }}
+          image-ref: ${{ steps.image.outputs.name }}:latest
           scan-type: image
           format: sarif
           output: trivy-results.sarif

@@ -14,9 +14,6 @@ on:
   schedule:
     - cron: "0 22 * * 5"
 
-env:
-  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/mastodon
-
 permissions: {}
 
 concurrency:
@@ -36,6 +33,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Normalize image name
+        id: image
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: |
+          owner="$(printf '%s' "${REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          echo "name=ghcr.io/${owner}/mastodon" >>"${GITHUB_OUTPUT}"
 
       - name: Extract image version tags
         id: version
@@ -59,7 +64,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ env.IMAGE_NAME }}
+          images: ${{ steps.image.outputs.name }}
           tags: |
             type=raw,value=latest
             type=raw,value=${{ steps.version.outputs.full }}
@@ -83,4 +88,4 @@ jobs:
           cosign-release: v3.0.2
 
       - name: Sign the published image
-        run: cosign sign --yes "${IMAGE_NAME}@${{ steps.build.outputs.digest }}"
+        run: cosign sign --yes "${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}"
