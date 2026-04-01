@@ -22,43 +22,8 @@ COPY --from=node /usr/local /usr/local
 COPY --from=node /opt /opt
 
 
-### Build Hardened Malloc
-ARG ALPINE_VERSION
-FROM alpine:${ALPINE_VERSION} AS build-malloc
-
-ARG HARDENED_MALLOC_TAG
-ARG HARDENED_MALLOC_COMMIT
-ARG CONFIG_NATIVE=false
-ARG VARIANT=light
-
-COPY signing/hardened_malloc.allowed_signers /tmp/allowed_signers
-
-RUN apk --no-cache add build-base git openssh-keygen && cd /tmp \
- && git config --global gpg.ssh.allowedSignersFile /tmp/allowed_signers \
- && git init /tmp/hardened_malloc \
- && cd /tmp/hardened_malloc \
- && git remote add origin https://github.com/GrapheneOS/hardened_malloc \
- && git fetch --depth 1 origin refs/tags/${HARDENED_MALLOC_TAG}:refs/tags/${HARDENED_MALLOC_TAG} \
- && git checkout --detach ${HARDENED_MALLOC_TAG} \
- && test "$(git rev-parse HEAD)" = "${HARDENED_MALLOC_COMMIT}" \
- && git verify-tag ${HARDENED_MALLOC_TAG} \
- && make CONFIG_NATIVE=${CONFIG_NATIVE} VARIANT=${VARIANT}
-
-
-### Build Mastodon (production environment)
-FROM node-ruby AS mastodon
-
-COPY --from=build-malloc /tmp/hardened_malloc/out-light/libhardened_malloc-light.so /usr/local/lib/
-COPY patches /tmp/patches/
-COPY signing/github-web-flow.gpg /tmp/web-flow.gpg
-
-ARG MASTODON_VERSION
-ARG MASTODON_REPOSITORY
-ARG MASTODON_COMMIT
-ARG MASTODON_GPG_FINGERPRINT
-
-ARG UID
-ARG GID
+### Shared runtime base
+FROM node-ruby AS runtime-base
 
 ENV RUN_DB_MIGRATIONS=true \
     SIDEKIQ_WORKERS=5 \
@@ -70,42 +35,62 @@ ENV RUN_DB_MIGRATIONS=true \
 
 WORKDIR /mastodon
 
-# Install runtime dependencies
 RUN apk --no-cache add \
     ca-certificates \
     ffmpeg \
     file \
-    git \
     icu-libs \
     imagemagick \
     libidn \
+    libpq \
     libstdc++ \
     libxml2 \
     libxslt \
-    libpq \
     openssl \
+    readline \
     s6 \
     tzdata \
     vips \
     yaml \
-    readline \
-    gcompat \
-# Install build dependencies
- && apk --no-cache add -t build-dependencies \
-    build-base \
-    icu-dev \
-    libidn-dev \
-    libtool \
-    libxml2-dev \
-    libxslt-dev \
-    patch \
-    gnupg \
-    pkgconf \
-    postgresql-dev \
-    python3 \
-    yaml-dev \
-    imagemagick \
-# Install Mastodon
+    gcompat
+
+
+### Build hardened_malloc
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION} AS build-malloc
+
+ARG HARDENED_MALLOC_TAG
+ARG HARDENED_MALLOC_COMMIT
+ARG CONFIG_NATIVE=false
+ARG VARIANT=light
+
+COPY signing/hardened_malloc.allowed_signers /tmp/allowed_signers
+
+RUN apk --no-cache add build-base git openssh-keygen \
+ && git config --global gpg.ssh.allowedSignersFile /tmp/allowed_signers \
+ && git init -q /tmp/hardened_malloc \
+ && cd /tmp/hardened_malloc \
+ && git remote add origin https://github.com/GrapheneOS/hardened_malloc \
+ && git fetch --depth 1 origin refs/tags/${HARDENED_MALLOC_TAG}:refs/tags/${HARDENED_MALLOC_TAG} \
+ && git checkout --detach ${HARDENED_MALLOC_TAG} \
+ && test "$(git rev-parse HEAD)" = "${HARDENED_MALLOC_COMMIT}" \
+ && git verify-tag ${HARDENED_MALLOC_TAG} \
+ && make CONFIG_NATIVE=${CONFIG_NATIVE} VARIANT=${VARIANT}
+
+
+### Fetch and verify Mastodon source
+ARG ALPINE_VERSION
+FROM alpine:${ALPINE_VERSION} AS mastodon-source
+
+ARG MASTODON_VERSION
+ARG MASTODON_REPOSITORY
+ARG MASTODON_COMMIT
+ARG MASTODON_GPG_FINGERPRINT
+
+COPY patches/mastodon-vite-blurhash.patch /tmp/mastodon-vite-blurhash.patch
+COPY signing/github-web-flow.gpg /tmp/web-flow.gpg
+
+RUN apk --no-cache add git gnupg patch \
  && GNUPGHOME="$(mktemp -d)" \
  && export GNUPGHOME \
  && gpg --batch --with-colons --import-options show-only --import /tmp/web-flow.gpg \
@@ -119,14 +104,32 @@ RUN apk --no-cache add \
  && git checkout --detach v${MASTODON_VERSION} \
  && test "$(git rev-parse HEAD)" = "${MASTODON_COMMIT}" \
  && git verify-commit HEAD \
- && patch -p1 < /tmp/patches/mastodon-vite-blurhash.patch \
- && rm -rf .git \
- && cp -a /tmp/mastodon/. /mastodon \
- && rm -rf /tmp/mastodon /tmp/patches "$GNUPGHOME" /tmp/web-flow.gpg \
- && cd /mastodon \
+ && patch -p1 < /tmp/mastodon-vite-blurhash.patch \
+ && rm -rf .git "$GNUPGHOME" /tmp/web-flow.gpg /tmp/mastodon-vite-blurhash.patch
+
+
+### Build Mastodon application and assets
+FROM runtime-base AS build-app
+
+COPY --from=mastodon-source /tmp/mastodon /mastodon
+
+RUN apk --no-cache add \
+    build-base \
+    git \
+    icu-dev \
+    libidn-dev \
+    libtool \
+    libxml2-dev \
+    libxslt-dev \
+    pkgconf \
+    postgresql-dev \
+    python3 \
+    yaml-dev \
  && bundle config build.nokogiri --use-system-libraries \
- && bundle config set --local clean 'true' && bundle config set --local deployment 'true' \
- && bundle config set --local without 'test development' && bundle config set no-cache 'true' \
+ && bundle config set --local clean 'true' \
+ && bundle config set --local deployment 'true' \
+ && bundle config set --local without 'test development' \
+ && bundle config set no-cache 'true' \
  && bundle install -j$(getconf _NPROCESSORS_ONLN) \
  && rm -f /usr/local/bin/yarn /usr/local/bin/yarnpkg \
  && corepack enable \
@@ -134,17 +137,24 @@ RUN apk --no-cache add \
  && OTP_SECRET=precompile_placeholder \
     SECRET_KEY_BASE_DUMMY=1 \
     bundle exec rails assets:precompile \
-# Clean
- && npm -g --force cache clean && yarn cache clean \
- && apk del build-dependencies \
-# Prepare mastodon user
- && addgroup -S -g ${GID} mastodon \
- && adduser -S -D -H -u ${UID} -G mastodon mastodon \
- && chown -R mastodon:mastodon /mastodon
+ && npm -g --force cache clean \
+ && yarn cache clean
+
+
+### Final image
+FROM runtime-base AS mastodon
+
+ARG UID
+ARG GID
+
+RUN addgroup -S -g ${GID} mastodon \
+ && adduser -S -D -H -u ${UID} -G mastodon mastodon
+
+COPY --from=build-malloc /tmp/hardened_malloc/out-light/libhardened_malloc-light.so /usr/local/lib/
+COPY --from=build-app --chown=${UID}:${GID} /mastodon /mastodon
+COPY --chown=${UID}:${GID} rootfs /
 
 ENV LD_PRELOAD="/usr/local/lib/libhardened_malloc-light.so"
-
-COPY --chown=mastodon:mastodon rootfs /
 
 RUN chmod +x /usr/local/bin/* /etc/s6.d/*/* /etc/s6.d/.s6-svscan/*
 
