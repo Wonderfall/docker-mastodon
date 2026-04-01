@@ -105,7 +105,7 @@ RUN apk --no-cache add git gnupg patch \
  && test "$(git rev-parse HEAD)" = "${MASTODON_COMMIT}" \
  && git verify-commit HEAD \
  && patch -p1 < /tmp/mastodon-vite-blurhash.patch \
- && rm -rf .git "$GNUPGHOME" /tmp/web-flow.gpg /tmp/mastodon-vite-blurhash.patch
+ && rm -rf .git /tmp/web-flow.gpg /tmp/mastodon-vite-blurhash.patch
 
 
 ### Build Mastodon application and assets
