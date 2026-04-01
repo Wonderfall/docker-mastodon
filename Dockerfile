@@ -35,7 +35,8 @@ ENV RUN_DB_MIGRATIONS=true \
 
 WORKDIR /mastodon
 
-RUN apk --no-cache add \
+RUN apk --no-cache upgrade \
+ && apk --no-cache add \
     ca-certificates \
     ffmpeg \
     file \
@@ -66,7 +67,8 @@ ARG VARIANT=light
 
 COPY signing/hardened_malloc.allowed_signers /tmp/allowed_signers
 
-RUN apk --no-cache add build-base git openssh-keygen \
+RUN apk --no-cache upgrade \
+ && apk --no-cache add build-base git openssh-keygen \
  && git config --global gpg.ssh.allowedSignersFile /tmp/allowed_signers \
  && git init -q /tmp/hardened_malloc \
  && cd /tmp/hardened_malloc \
@@ -92,7 +94,8 @@ ARG MASTODON_GPG_FINGERPRINT
 COPY patches/mastodon-vite-blurhash.patch /tmp/mastodon-vite-blurhash.patch
 COPY signing/github-web-flow.gpg /tmp/web-flow.gpg
 
-RUN apk --no-cache add git gnupg patch \
+RUN apk --no-cache upgrade \
+ && apk --no-cache add git gnupg patch \
  && git init -q /tmp/mastodon \
  && cd /tmp/mastodon \
  && git remote add origin https://github.com/${MASTODON_REPOSITORY}.git \
@@ -117,7 +120,8 @@ FROM runtime-base AS build-app
 
 COPY --from=mastodon-source /tmp/mastodon /mastodon
 
-RUN apk --no-cache add \
+RUN apk --no-cache upgrade \
+ && apk --no-cache add \
     build-base \
     git \
     icu-dev \
