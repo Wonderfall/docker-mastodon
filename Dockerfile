@@ -1,7 +1,7 @@
 # -------------- Build-time variables --------------
 ARG MASTODON_VERSION=4.5.8
 ARG MASTODON_REPOSITORY=mastodon/mastodon
-ARG MASTODON_COMMIT=c72ca33fac1ae1518371f5954ae9487692b17709
+ARG MASTODON_COMMIT=38e7bb9b866b5d207a511de093de25536f13e9c4
 ARG MASTODON_GPG_FINGERPRINT=968479A1AFF927E37D1A566BB5690EEEBB952194
 
 ARG RUBY_VERSION=3.4
@@ -108,10 +108,15 @@ RUN apk --no-cache add \
 # Install Mastodon
  && GNUPGHOME="$(mktemp -d)" \
  && export GNUPGHOME \
- && test "$(gpg --batch --with-colons --import-options show-only --import /tmp/web-flow.gpg | awk -F: '$1 == \"fpr\" { print $10; exit }')" = "${MASTODON_GPG_FINGERPRINT}" \
+ && gpg --batch --with-colons --import-options show-only --import /tmp/web-flow.gpg \
+    | awk -F: '$1 == "fpr" { print $10 }' \
+    | grep -Fqx "${MASTODON_GPG_FINGERPRINT}" \
  && gpg --batch --import /tmp/web-flow.gpg \
- && git clone --depth 1 --branch v${MASTODON_VERSION} https://github.com/${MASTODON_REPOSITORY}.git /tmp/mastodon \
+ && git init -q /tmp/mastodon \
  && cd /tmp/mastodon \
+ && git remote add origin https://github.com/${MASTODON_REPOSITORY}.git \
+ && git fetch --depth 1 origin refs/tags/v${MASTODON_VERSION}:refs/tags/v${MASTODON_VERSION} \
+ && git checkout --detach v${MASTODON_VERSION} \
  && test "$(git rev-parse HEAD)" = "${MASTODON_COMMIT}" \
  && git verify-commit HEAD \
  && patch -p1 < /tmp/patches/mastodon-vite-blurhash.patch \
