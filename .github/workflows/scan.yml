@@ -1,29 +1,65 @@
-name: scan
+name: Scan
 
 on:
+  workflow_dispatch:
   schedule:
-    # Scan the image regularly (once a day)
-    - cron: '45 02 * * *'
+    - cron: "0 3 * * *"
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/mastodon:latest
+
+permissions: {}
+
+concurrency:
+  group: scan-image
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Scan current image & report results
-    runs-on: "ubuntu-20.04"
+  trivy:
+    name: Scan published image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions: {}
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
-          image-ref: 'ghcr.io/wonderfall/mastodon'
-          format: 'template'
-          template: '@/contrib/sarif.tpl'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          vuln-type: "os"
+          image-ref: ${{ env.IMAGE_NAME }}
+          scan-type: image
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          vuln-type: os
+          scanners: vuln
+          cache: false
 
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v1
+      # Upload is isolated from the scanner so Trivy never gets security-events write access.
+      - name: Persist SARIF report
+        uses: actions/upload-artifact@v7
         with:
-          sarif_file: 'trivy-results.sarif'
+          name: trivy-results
+          path: trivy-results.sarif
+          if-no-files-found: error
+          retention-days: 1
+
+  upload-sarif:
+    name: Upload SARIF results
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: trivy
+    permissions:
+      actions: read
+      security-events: write
+
+    steps:
+      - name: Download SARIF report
+        uses: actions/download-artifact@v8
+        with:
+          name: trivy-results
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-os

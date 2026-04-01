@@ -1,0 +1,86 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - ".dockerignore"
+      - "Dockerfile"
+      - "patches/**"
+      - "rootfs/**"
+      - "signing/**"
+  schedule:
+    - cron: "0 22 * * 5"
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/mastodon
+
+permissions: {}
+
+concurrency:
+  group: publish-image
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build, publish, and sign image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Extract image version tags
+        id: version
+        run: |
+          full_version="$(awk -F= '/^ARG MASTODON_VERSION=/{print $2; exit}' Dockerfile)"
+          major_minor="${full_version%.*}"
+          echo "full=${full_version}" >>"${GITHUB_OUTPUT}"
+          echo "major_minor=${major_minor}" >>"${GITHUB_OUTPUT}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ steps.version.outputs.full }}
+            type=raw,value=${{ steps.version.outputs.major_minor }}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          pull: true
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=publish
+          cache-to: type=gha,mode=max,scope=publish
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.1
+        with:
+          cosign-release: v3.0.2
+
+      - name: Sign the published image
+        run: cosign sign --yes "${IMAGE_NAME}@${{ steps.build.outputs.digest }}"

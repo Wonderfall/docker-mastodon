@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+    paths:
+      - ".dockerignore"
+      - "Dockerfile"
+      - "patches/**"
+      - "rootfs/**"
+      - "signing/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/publish.yml"
+      - ".github/workflows/scan.yml"
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker-build:
+    name: Build image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Build Docker image
+        run: docker build --pull --tag local/mastodon:ci .
