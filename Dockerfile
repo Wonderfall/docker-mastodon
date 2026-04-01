@@ -153,14 +153,15 @@ RUN addgroup -S -g ${GID} mastodon \
 COPY --from=build-malloc /tmp/hardened_malloc/out-light/libhardened_malloc-light.so /usr/local/lib/
 COPY --from=build-app /usr/local/bundle /usr/local/bundle
 COPY --from=build-app /mastodon /mastodon
-COPY rootfs /
+COPY rootfs/usr/local/bin/run /usr/local/bin/run
+COPY rootfs/etc/s6.d /etc/s6.d
 
 ENV LD_PRELOAD="/usr/local/lib/libhardened_malloc-light.so"
 
 # Keep application and init code root-owned; only runtime data stays writable.
 RUN mkdir -p /mastodon/public/system /mastodon/log /mastodon/tmp \
  && chown -R ${UID}:${GID} /mastodon/public/system /mastodon/log /mastodon/tmp \
- && chmod 755 /usr/local/bin/run \
+ && chmod 755 /usr/local/bin /usr/local/bin/run \
  && chmod -R 755 /etc/s6.d
 
 USER mastodon
