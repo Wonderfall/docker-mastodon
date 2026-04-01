@@ -151,6 +151,7 @@ RUN addgroup -S -g ${GID} mastodon \
  && adduser -S -D -H -u ${UID} -G mastodon mastodon
 
 COPY --from=build-malloc /tmp/hardened_malloc/out-light/libhardened_malloc-light.so /usr/local/lib/
+COPY --from=build-app /usr/local/bundle /usr/local/bundle
 COPY --from=build-app --chown=${UID}:${GID} /mastodon /mastodon
 COPY --chown=${UID}:${GID} rootfs /
 
