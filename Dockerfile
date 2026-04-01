@@ -72,7 +72,9 @@ RUN apk --no-cache add build-base git openssh-keygen \
  && cd /tmp/hardened_malloc \
  && git remote add origin https://github.com/GrapheneOS/hardened_malloc \
  && git fetch --depth 1 origin refs/tags/${HARDENED_MALLOC_TAG}:refs/tags/${HARDENED_MALLOC_TAG} \
- && git checkout --detach ${HARDENED_MALLOC_TAG} \
+ && git checkout --detach ${HARDENED_MALLOC_TAG}
+
+RUN --network=none cd /tmp/hardened_malloc \
  && test "$(git rev-parse HEAD)" = "${HARDENED_MALLOC_COMMIT}" \
  && git verify-tag ${HARDENED_MALLOC_TAG} \
  && make CONFIG_NATIVE=${CONFIG_NATIVE} VARIANT=${VARIANT}
@@ -91,21 +93,23 @@ COPY patches/mastodon-vite-blurhash.patch /tmp/mastodon-vite-blurhash.patch
 COPY signing/github-web-flow.gpg /tmp/web-flow.gpg
 
 RUN apk --no-cache add git gnupg patch \
- && GNUPGHOME="$(mktemp -d)" \
+ && git init -q /tmp/mastodon \
+ && cd /tmp/mastodon \
+ && git remote add origin https://github.com/${MASTODON_REPOSITORY}.git \
+ && git fetch --depth 1 origin refs/tags/v${MASTODON_VERSION}:refs/tags/v${MASTODON_VERSION} \
+ && git checkout --detach v${MASTODON_VERSION}
+
+RUN --network=none GNUPGHOME="$(mktemp -d)" \
  && export GNUPGHOME \
  && gpg --batch --with-colons --import-options show-only --import /tmp/web-flow.gpg \
     | awk -F: '$1 == "fpr" { print $10 }' \
     | grep -Fqx "${MASTODON_GPG_FINGERPRINT}" \
  && gpg --batch --import /tmp/web-flow.gpg \
- && git init -q /tmp/mastodon \
  && cd /tmp/mastodon \
- && git remote add origin https://github.com/${MASTODON_REPOSITORY}.git \
- && git fetch --depth 1 origin refs/tags/v${MASTODON_VERSION}:refs/tags/v${MASTODON_VERSION} \
- && git checkout --detach v${MASTODON_VERSION} \
  && test "$(git rev-parse HEAD)" = "${MASTODON_COMMIT}" \
  && git verify-commit HEAD \
  && patch -p1 < /tmp/mastodon-vite-blurhash.patch \
- && rm -rf .git /tmp/web-flow.gpg /tmp/mastodon-vite-blurhash.patch
+ && rm -rf .git "$GNUPGHOME" /tmp/web-flow.gpg /tmp/mastodon-vite-blurhash.patch
 
 
 ### Build Mastodon application and assets
@@ -133,7 +137,10 @@ RUN apk --no-cache add \
  && bundle install -j$(getconf _NPROCESSORS_ONLN) \
  && rm -f /usr/local/bin/yarn /usr/local/bin/yarnpkg \
  && corepack enable \
- && yarn install --immutable \
+ && yarn install --immutable
+
+RUN --network=none \
+    cd /mastodon \
  && OTP_SECRET=precompile_placeholder \
     SECRET_KEY_BASE_DUMMY=1 \
     bundle exec rails assets:precompile \
@@ -147,7 +154,7 @@ FROM runtime-base AS mastodon
 ARG UID
 ARG GID
 
-RUN addgroup -S -g ${GID} mastodon \
+RUN --network=none addgroup -S -g ${GID} mastodon \
  && adduser -S -D -H -u ${UID} -G mastodon mastodon
 
 COPY --from=build-malloc /tmp/hardened_malloc/out-light/libhardened_malloc-light.so /usr/local/lib/
@@ -159,7 +166,7 @@ COPY rootfs/etc/s6.d /etc/s6.d
 ENV LD_PRELOAD="/usr/local/lib/libhardened_malloc-light.so"
 
 # Keep application and init code root-owned; only runtime data stays writable.
-RUN mkdir -p /mastodon/public/system /mastodon/log /mastodon/tmp \
+RUN --network=none mkdir -p /mastodon/public/system /mastodon/log /mastodon/tmp \
  && chown -R ${UID}:${GID} /mastodon/public/system /mastodon/log /mastodon/tmp \
  && chmod 755 /usr/local/bin /usr/local/bin/run \
  && chmod -R 755 /etc/s6.d
