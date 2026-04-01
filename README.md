@@ -68,26 +68,23 @@ Generate them once with `bundle exec rake db:encryption:init` and keep the value
 
 ## docker-compose example
 Please use your own settings and adjust this example to your needs.
-Here I use Traefik v2 (already configured to redirect 80 to 443 globally).
+Networking and reverse-proxy details are intentionally omitted here.
 
 ```yaml
-version: '2.4'
-
-networks:
-  http_network:
-    external: true
-
-  mastodon_network:
-    external: false
-    internal: true
-
 services:
   mastodon:
     image: ghcr.io/wonderfall/mastodon
     container_name: mastodon
+    runtime: runsc-kvm
     restart: unless-stopped
+    cpus: 4
+    mem_limit: 6g
+    pids_limit: 1024
+    read_only: true
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     env_file: /wherever/docker/mastodon/.env.production
     depends_on:
       - mastodon-db
@@ -95,52 +92,57 @@ services:
     volumes:
       - /wherever/docker/mastodon/data:/mastodon/public/system
       - /wherever/docker/mastodon/logs:/mastodon/log
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.mastodon-web-secure.entrypoints=https
-      - traefik.http.routers.mastodon-web-secure.rule=Host(`domain.tld`)
-      - traefik.http.routers.mastodon-web-secure.tls=true
-      - traefik.http.routers.mastodon-web-secure.middlewares=hsts-headers@file
-      - traefik.http.routers.mastodon-web-secure.tls.certresolver=http
-      - traefik.http.routers.mastodon-web-secure.service=mastodon-web
-      - traefik.http.services.mastodon-web.loadbalancer.server.port=3000
-      - traefik.http.routers.mastodon-streaming-secure.entrypoints=https
-      - traefik.http.routers.mastodon-streaming-secure.rule=Host(`domain.tld`) && PathPrefix(`/api/v1/streaming`)
-      - traefik.http.routers.mastodon-streaming-secure.tls=true
-      - traefik.http.routers.mastodon-streaming-secure.middlewares=hsts-headers@file
-      - traefik.http.routers.mastodon-streaming-secure.tls.certresolver=http
-      - traefik.http.routers.mastodon-streaming-secure.service=mastodon-streaming
-      - traefik.http.services.mastodon-streaming.loadbalancer.server.port=4000
-      - traefik.docker.network=http_network
-    networks:
-      - mastodon_network
-      - http_network
- 
-   mastodon-redis:
-    image: redis:7.4-alpine3.21
+      - /wherever/docker/resolv.conf:/etc/resolv.conf:ro
+    tmpfs:
+      - /etc/s6.d/.s6-svscan:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
+      - /etc/s6.d/sidekiq/event:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
+      - /etc/s6.d/sidekiq/supervise:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
+      - /etc/s6.d/streaming/event:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
+      - /etc/s6.d/streaming/supervise:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
+      - /etc/s6.d/web/event:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
+      - /etc/s6.d/web/supervise:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
+      - /tmp:size=256M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
+
+  mastodon-redis:
+    image: redis:7-alpine
     container_name: mastodon-redis
+    runtime: runsc-kvm
     restart: unless-stopped
+    cpus: 4
+    mem_limit: 4g
+    pids_limit: 512
+    user: 999:1000
+    read_only: true
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
       - /wherever/docker/mastodon/redis:/data
-    networks:
-      - mastodon_network
+      - /wherever/docker/resolv.conf:/etc/resolv.conf:ro
 
   mastodon-db:
-    image: postgres:17-alpine3.23
+    image: postgres:14-alpine
     container_name: mastodon-db
+    runtime: runsc-kvm
     restart: unless-stopped
+    cpus: 4
+    mem_limit: 6g
+    pids_limit: 1024
+    user: 70:70
+    read_only: true
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
       - /wherever/docker/mastodon/db:/var/lib/postgresql/data
+    tmpfs:
+      - /var/run/postgresql:size=50M,mode=0770,uid=70,gid=70,noexec,nosuid,nodev
     environment:
       - POSTGRES_USER=mastodon
       - POSTGRES_DB=mastodon
       - POSTGRES_PASSWORD=supersecretpassword
-    networks:
-      - mastodon_network
 ```
 
 *This image has been tested and works great with the [gVisor runtime](https://gvisor.dev/).*
