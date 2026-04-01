@@ -35,8 +35,8 @@ ENV RUN_DB_MIGRATIONS=true \
 
 WORKDIR /mastodon
 
-RUN apk --no-cache upgrade \
- && apk --no-cache add \
+RUN apk -U upgrade \
+ && apk add \
     ca-certificates \
     ffmpeg \
     file \
@@ -53,7 +53,8 @@ RUN apk --no-cache upgrade \
     tzdata \
     vips \
     yaml \
-    gcompat
+    gcompat \
+ && rm -rf /var/cache/apk/*
 
 
 ### Build hardened_malloc
@@ -67,14 +68,15 @@ ARG VARIANT=light
 
 COPY signing/hardened_malloc.allowed_signers /tmp/allowed_signers
 
-RUN apk --no-cache upgrade \
- && apk --no-cache add build-base git openssh-keygen \
+RUN apk -U upgrade \
+ && apk add build-base git openssh-keygen \
  && git config --global gpg.ssh.allowedSignersFile /tmp/allowed_signers \
  && git init -q /tmp/hardened_malloc \
  && cd /tmp/hardened_malloc \
  && git remote add origin https://github.com/GrapheneOS/hardened_malloc \
  && git fetch --depth 1 origin refs/tags/${HARDENED_MALLOC_TAG}:refs/tags/${HARDENED_MALLOC_TAG} \
- && git checkout --detach ${HARDENED_MALLOC_TAG}
+ && git checkout --detach ${HARDENED_MALLOC_TAG} \
+ && rm -rf /var/cache/apk/*
 
 RUN --network=none cd /tmp/hardened_malloc \
  && test "$(git rev-parse HEAD)" = "${HARDENED_MALLOC_COMMIT}" \
@@ -94,13 +96,14 @@ ARG MASTODON_GPG_FINGERPRINT
 COPY patches/mastodon-vite-blurhash.patch /tmp/mastodon-vite-blurhash.patch
 COPY signing/github-web-flow.gpg /tmp/web-flow.gpg
 
-RUN apk --no-cache upgrade \
- && apk --no-cache add git gnupg patch \
+RUN apk -U upgrade \
+ && apk add git gnupg patch \
  && git init -q /tmp/mastodon \
  && cd /tmp/mastodon \
  && git remote add origin https://github.com/${MASTODON_REPOSITORY}.git \
  && git fetch --depth 1 origin refs/tags/v${MASTODON_VERSION}:refs/tags/v${MASTODON_VERSION} \
- && git checkout --detach v${MASTODON_VERSION}
+ && git checkout --detach v${MASTODON_VERSION} \
+ && rm -rf /var/cache/apk/*
 
 RUN --network=none GNUPGHOME="$(mktemp -d)" \
  && export GNUPGHOME \
@@ -120,8 +123,8 @@ FROM runtime-base AS build-app
 
 COPY --from=mastodon-source /tmp/mastodon /mastodon
 
-RUN apk --no-cache upgrade \
- && apk --no-cache add \
+RUN apk -U upgrade \
+ && apk add \
     build-base \
     git \
     icu-dev \
@@ -141,7 +144,8 @@ RUN apk --no-cache upgrade \
  && bundle install -j$(getconf _NPROCESSORS_ONLN) \
  && rm -f /usr/local/bin/yarn /usr/local/bin/yarnpkg \
  && corepack enable \
- && yarn install --immutable
+ && yarn install --immutable \
+ && rm -rf /var/cache/apk/*
 
 RUN --network=none \
     cd /mastodon \
