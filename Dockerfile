@@ -1,12 +1,14 @@
 # -------------- Build-time variables --------------
-ARG MASTODON_VERSION=4.2.27
-ARG MASTODON_REPOSITORY=tootsuite/mastodon
+ARG MASTODON_VERSION=4.5.8
+ARG MASTODON_REPOSITORY=mastodon/mastodon
+ARG MASTODON_COMMIT=c72ca33fac1ae1518371f5954ae9487692b17709
+ARG MASTODON_GPG_FINGERPRINT=968479A1AFF927E37D1A566BB5690EEEBB952194
 
-ARG RUBY_VERSION=3.2
-ARG NODE_VERSION=20
-ARG ALPINE_VERSION=3.19
-ARG HARDENED_MALLOC_VERSION=11
-ARG LIBICONV_VERSION=1.17
+ARG RUBY_VERSION=3.4
+ARG NODE_VERSION=24
+ARG ALPINE_VERSION=3.23
+ARG HARDENED_MALLOC_VERSION=14
+ARG HARDENED_MALLOC_COMMIT=3bee8d3e0e4fd82b684521891373f40ab4982a5a
 
 ARG UID=991
 ARG GID=991
@@ -14,48 +16,43 @@ ARG GID=991
 
 
 ### Build Mastodon stack base (Ruby + Node)
-FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} as node
-FROM ruby:${RUBY_VERSION}-alpine${ALPINE_VERSION} as node-ruby
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS node
+FROM ruby:${RUBY_VERSION}-alpine${ALPINE_VERSION} AS node-ruby
 COPY --from=node /usr/local /usr/local
 COPY --from=node /opt /opt
 
 
 ### Build Hardened Malloc
 ARG ALPINE_VERSION
-FROM alpine:${ALPINE_VERSION} as build-malloc
+FROM alpine:${ALPINE_VERSION} AS build-malloc
 
 ARG HARDENED_MALLOC_VERSION
+ARG HARDENED_MALLOC_COMMIT
 ARG CONFIG_NATIVE=false
 ARG VARIANT=light
 
-RUN apk --no-cache add build-base git gnupg && cd /tmp \
- && wget -q https://github.com/thestinger.gpg && gpg --import thestinger.gpg \
- && git clone --depth 1 --branch ${HARDENED_MALLOC_VERSION} https://github.com/GrapheneOS/hardened_malloc \
- && cd hardened_malloc && git verify-tag $(git describe --tags) \
+COPY signing/hardened_malloc.allowed_signers /tmp/allowed_signers
+
+RUN apk --no-cache add build-base git && cd /tmp \
+ && git config --global gpg.ssh.allowedSignersFile /tmp/allowed_signers \
+ && git clone --depth 1 --branch ${HARDENED_MALLOC_VERSION} https://github.com/GrapheneOS/hardened_malloc /tmp/hardened_malloc \
+ && cd /tmp/hardened_malloc \
+ && test "$(git rev-parse HEAD)" = "${HARDENED_MALLOC_COMMIT}" \
+ && git verify-tag "$(git describe --tags --exact-match)" \
  && make CONFIG_NATIVE=${CONFIG_NATIVE} VARIANT=${VARIANT}
 
 
-### Build GNU Libiconv (needed for nokogiri)
-ARG ALPINE_VERSION
-FROM alpine:${ALPINE_VERSION} as build-gnulibiconv
-
-ARG LIBICONV_VERSION
-
-RUN apk --no-cache add build-base \
- && wget -q https://ftp.gnu.org/pub/gnu/libiconv/libiconv-${LIBICONV_VERSION}.tar.gz \
- && mkdir /tmp/libiconv && tar xf libiconv-${LIBICONV_VERSION}.tar.gz -C /tmp/libiconv --strip-components 1 \
- && cd /tmp/libiconv && mkdir output && ./configure --prefix=$PWD/output \
- && make -j$(getconf _NPROCESSORS_ONLN) && make install
-
-
 ### Build Mastodon (production environment)
-FROM node-ruby as mastodon
+FROM node-ruby AS mastodon
 
-COPY --from=build-gnulibiconv /tmp/libiconv/output /usr/local
 COPY --from=build-malloc /tmp/hardened_malloc/out-light/libhardened_malloc-light.so /usr/local/lib/
+COPY patches /tmp/patches/
+COPY signing/github-web-flow.gpg /tmp/web-flow.gpg
 
 ARG MASTODON_VERSION
 ARG MASTODON_REPOSITORY
+ARG MASTODON_COMMIT
+ARG MASTODON_GPG_FINGERPRINT
 
 ARG UID
 ARG GID
@@ -66,8 +63,7 @@ ENV RUN_DB_MIGRATIONS=true \
     RAILS_SERVE_STATIC_FILES=true \
     RAILS_ENV=production \
     NODE_ENV=production \
-    PATH="${PATH}:/mastodon/bin" \
-    LD_PRELOAD="/usr/local/lib/libhardened_malloc-light.so"
+    PATH="${PATH}:/mastodon/bin"
 
 WORKDIR /mastodon
 
@@ -80,12 +76,14 @@ RUN apk --no-cache add \
     icu-libs \
     imagemagick \
     libidn \
+    libstdc++ \
     libxml2 \
     libxslt \
     libpq \
     openssl \
     s6 \
     tzdata \
+    vips \
     yaml \
     readline \
     gcompat \
@@ -98,23 +96,45 @@ RUN apk --no-cache add \
     libxml2-dev \
     libxslt-dev \
     patch \
+    gnupg \
+    pkgconf \
     postgresql-dev \
     python3 \
+    yaml-dev \
     imagemagick \
 # Install Mastodon
- && wget -qO- https://github.com/${MASTODON_REPOSITORY}/archive/v${MASTODON_VERSION}.tar.gz | tar xz --strip 1 \
- && bundle config build.nokogiri --use-system-libraries --with-iconv-lib=/usr/local/lib --with-iconv-include=/usr/local/include \
+ && GNUPGHOME="$(mktemp -d)" \
+ && export GNUPGHOME \
+ && test "$(gpg --batch --with-colons --import-options show-only --import /tmp/web-flow.gpg | awk -F: '$1 == \"fpr\" { print $10; exit }')" = "${MASTODON_GPG_FINGERPRINT}" \
+ && gpg --batch --import /tmp/web-flow.gpg \
+ && git clone --depth 1 --branch v${MASTODON_VERSION} https://github.com/${MASTODON_REPOSITORY}.git /tmp/mastodon \
+ && cd /tmp/mastodon \
+ && test "$(git rev-parse HEAD)" = "${MASTODON_COMMIT}" \
+ && git verify-commit HEAD \
+ && patch -p1 < /tmp/patches/mastodon-vite-blurhash.patch \
+ && rm -rf .git \
+ && cp -a /tmp/mastodon/. /mastodon \
+ && rm -rf /tmp/mastodon /tmp/patches "$GNUPGHOME" /tmp/web-flow.gpg \
+ && cd /mastodon \
+ && bundle config build.nokogiri --use-system-libraries \
  && bundle config set --local clean 'true' && bundle config set --local deployment 'true' \
  && bundle config set --local without 'test development' && bundle config set no-cache 'true' \
  && bundle install -j$(getconf _NPROCESSORS_ONLN) \
- && yarn install --pure-lockfile --ignore-engines \
- && OTP_SECRET=precompile_placeholder SECRET_KEY_BASE=precompile_placeholder bundle exec rails assets:precompile \
+ && rm -f /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+ && corepack enable \
+ && yarn install --immutable \
+ && OTP_SECRET=precompile_placeholder \
+    SECRET_KEY_BASE_DUMMY=1 \
+    bundle exec rails assets:precompile \
 # Clean
  && npm -g --force cache clean && yarn cache clean \
  && apk del build-dependencies \
 # Prepare mastodon user
- && adduser -g ${GID} -u ${UID} --disabled-password --gecos "" mastodon \
+ && addgroup -S -g ${GID} mastodon \
+ && adduser -S -D -H -u ${UID} -G mastodon mastodon \
  && chown -R mastodon:mastodon /mastodon
+
+ENV LD_PRELOAD="/usr/local/lib/libhardened_malloc-light.so"
 
 COPY --chown=mastodon:mastodon rootfs /
 
@@ -131,4 +151,4 @@ LABEL maintainer="Wonderfall <wonderfall@protonmail.com>" \
 
 ENTRYPOINT ["/usr/local/bin/run"]
 
-CMD ["/bin/s6-svscan", "/etc/s6.d"]
+CMD ["s6-svscan", "/etc/s6.d"]

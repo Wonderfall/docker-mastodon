@@ -1,10 +1,10 @@
 # wonderfall/mastodon
 *Your self-hosted, globally interconnected microblogging community.*
 
-Mastodon [official website](https://joinmastodon.org/) and [source code](https://github.com/tootsuite/mastodon/).
+Mastodon [official website](https://joinmastodon.org/) and [source code](https://github.com/mastodon/mastodon/).
 
 ## Why this image?
-This non-official image is intended as an **all-in-one** (as in monolithic) Mastodon **production** image. You should use [the official image](https://hub.docker.com/r/tootsuite/mastodon) for development purpose or if you want scalability.
+This non-official image is intended as an **all-in-one** (as in monolithic) Mastodon **production** image. You should use [the official image](https://github.com/mastodon/mastodon/pkgs/container/mastodon) for development purpose or if you want scalability.
 
 ## Security
 Don't run random images from random dudes on the Internet. Ideally, you want to maintain and build it yourself.
@@ -19,7 +19,7 @@ Images are scanned every day by [Trivy](https://github.com/aquasecurity/trivy) f
 
 ## Tags
 - `latest` : latest Mastodon version (or working commit)
-- `x.x` : latest Mastodon x.x (e.g. `3.4`)
+- `x.x` : latest Mastodon x.x (e.g. `4.5`)
 - `x.x.x` : Mastodon x.x.x (including release candidates)
 
 You can always have a glance [here](https://github.com/users/Wonderfall/packages/container/package/mastodon).
@@ -27,8 +27,15 @@ You can always have a glance [here](https://github.com/users/Wonderfall/packages
 ## Build-time variables
 |          Variable         |         Description        |       Default      |
 | ------------------------- | -------------------------- | ------------------ |
-| **MASTODON_VERSION**      | version/commit of Mastodon |         N/A        |
-| **REPOSITORY**            | source of Mastodon         | tootsuite/mastodon |
+| **MASTODON_VERSION**      | Mastodon release tag       |       `4.5.8`      |
+| **MASTODON_REPOSITORY**   | source of Mastodon         | `mastodon/mastodon`|
+| **MASTODON_COMMIT**       | expected Mastodon commit   | `c72ca33fac1ae1518371f5954ae9487692b17709` |
+| **MASTODON_GPG_FINGERPRINT** | trusted Mastodon signing key | `968479A1AFF927E37D1A566BB5690EEEBB952194` |
+| **RUBY_VERSION**          | Ruby base image tag        |        `3.4`       |
+| **NODE_VERSION**          | Node.js base image tag     |        `24`        |
+| **ALPINE_VERSION**        | Alpine base image tag      |       `3.23`       |
+| **HARDENED_MALLOC_VERSION** | hardened_malloc tag      |        `14`        |
+| **HARDENED_MALLOC_COMMIT** | expected hardened_malloc commit | `3bee8d3e0e4fd82b684521891373f40ab4982a5a` |
 
 ## Environment variables you should change
 
@@ -39,7 +46,13 @@ You can always have a glance [here](https://github.com/users/Wonderfall/packages
 |    **RUN_DB_MIGRATIONS**  | run migrations at startup   |        true        |
 |    **SIDEKIQ_WORKERS**    | number of Sidekiq workers   |          5         |
 
-Don't forget to provide [an environment file](https://github.com/tootsuite/mastodon/blob/main/.env.production.sample) for Mastodon itself.
+Don't forget to provide [an environment file](https://github.com/mastodon/mastodon/blob/main/.env.production.sample) for Mastodon itself.
+Mastodon `4.3+` also requires:
+- `ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY`
+- `ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY`
+- `ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT`
+
+Generate them once with `bundle exec rake db:encryption:init` and keep the values stable.
 
 ## Volumes
 |          Variable            |         Description        |
@@ -104,7 +117,7 @@ services:
       - http_network
  
    mastodon-redis:
-    image: redis:alpine
+    image: redis:7.4-alpine3.21
     container_name: mastodon-redis
     restart: unless-stopped
     security_opt:
@@ -115,7 +128,7 @@ services:
       - mastodon_network
 
   mastodon-db:
-    image: postgres:9.6-alpine
+    image: postgres:17-alpine3.23
     container_name: mastodon-db
     restart: unless-stopped
     security_opt:

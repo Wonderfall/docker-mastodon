@@ -8,7 +8,7 @@ echo "
     |_|_|_|__,|___|_| |___|___|___|_|_|
 
 A GNU Social-compatible microblogging server
-   https://github.com/tootsuite/mastodon
+   https://github.com/mastodon/mastodon
 ---------------------------------------------
 UID/GID settings
 ---------------------------------------------
@@ -23,14 +23,14 @@ Web       : /mastodon/log/web.log
 ---------------------------------------------
 "
 
-if [ "$RUN_DB_MIGRATIONS" == "true" ]; then
+if [ "$RUN_DB_MIGRATIONS" = "true" ]; then
   echo "Running database migrations task..."
   bundle exec rake db:migrate
 fi
 
 echo "Executing process(es)..."
-if [ '$@' == '' ]; then
-    exec /bin/s6-svscan /etc/s6.d
+if [ "$#" -eq 0 ]; then
+    exec s6-svscan /etc/s6.d
 else
     exec "$@"
 fi
