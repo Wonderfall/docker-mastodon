@@ -1,0 +1,9 @@
+*
+!.dockerignore
+!Dockerfile
+!patches/
+!patches/**
+!rootfs/
+!rootfs/**
+!signing/
+!signing/**
