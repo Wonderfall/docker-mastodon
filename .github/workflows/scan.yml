@@ -28,7 +28,7 @@ jobs:
           echo "name=ghcr.io/${owner}/mastodon" >>"${GITHUB_OUTPUT}"
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: ${{ steps.image.outputs.name }}:latest
           scan-type: image
@@ -41,7 +41,7 @@ jobs:
 
       # Upload is isolated from the scanner so Trivy never gets security-events write access.
       - name: Persist SARIF report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7
         with:
           name: trivy-results
           path: trivy-results.sarif
@@ -59,12 +59,12 @@ jobs:
 
     steps:
       - name: Download SARIF report
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: trivy-results
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@c10b8064de6f491fea524254123dbe5e09572f13 # v4
         with:
           sarif_file: trivy-results.sarif
           category: trivy-os
