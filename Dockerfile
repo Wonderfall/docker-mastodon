@@ -7,7 +7,7 @@ ARG MASTODON_GPG_FINGERPRINT=968479A1AFF927E37D1A566BB5690EEEBB952194
 ARG RUBY_VERSION=3.4
 ARG NODE_VERSION=24
 ARG ALPINE_VERSION=3.23
-ARG HARDENED_MALLOC_VERSION=14
+ARG HARDENED_MALLOC_TAG=2026030100
 ARG HARDENED_MALLOC_COMMIT=3bee8d3e0e4fd82b684521891373f40ab4982a5a
 
 ARG UID=991
@@ -26,19 +26,22 @@ COPY --from=node /opt /opt
 ARG ALPINE_VERSION
 FROM alpine:${ALPINE_VERSION} AS build-malloc
 
-ARG HARDENED_MALLOC_VERSION
+ARG HARDENED_MALLOC_TAG
 ARG HARDENED_MALLOC_COMMIT
 ARG CONFIG_NATIVE=false
 ARG VARIANT=light
 
 COPY signing/hardened_malloc.allowed_signers /tmp/allowed_signers
 
-RUN apk --no-cache add build-base git && cd /tmp \
+RUN apk --no-cache add build-base git openssh-keygen && cd /tmp \
  && git config --global gpg.ssh.allowedSignersFile /tmp/allowed_signers \
- && git clone --depth 1 --branch ${HARDENED_MALLOC_VERSION} https://github.com/GrapheneOS/hardened_malloc /tmp/hardened_malloc \
+ && git init /tmp/hardened_malloc \
  && cd /tmp/hardened_malloc \
+ && git remote add origin https://github.com/GrapheneOS/hardened_malloc \
+ && git fetch --depth 1 origin refs/tags/${HARDENED_MALLOC_TAG}:refs/tags/${HARDENED_MALLOC_TAG} \
+ && git checkout --detach ${HARDENED_MALLOC_TAG} \
  && test "$(git rev-parse HEAD)" = "${HARDENED_MALLOC_COMMIT}" \
- && git verify-tag "$(git describe --tags --exact-match)" \
+ && git verify-tag ${HARDENED_MALLOC_TAG} \
  && make CONFIG_NATIVE=${CONFIG_NATIVE} VARIANT=${VARIANT}
 
 
