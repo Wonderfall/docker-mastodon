@@ -18,27 +18,8 @@ prepare_s6_scandir() {
 
   mkdir -p "$runtime_parent"
   scan_dir="$(mktemp -d "$runtime_parent/scan.XXXXXX")"
-  stage_service_tree /etc/s6.d "$scan_dir"
+  cp -R /etc/s6.d/. "$scan_dir"/
   printf '%s\n' "$scan_dir"
-}
-
-stage_service_tree() {
-  src_dir="$1"
-  dst_dir="$2"
-
-  mkdir -p "$dst_dir"
-
-  for entry in "$src_dir"/* "$src_dir"/.[!.]* "$src_dir"/..?*; do
-    [ -e "$entry" ] || continue
-    name="${entry##*/}"
-    dst_entry="$dst_dir/$name"
-
-    if [ -d "$entry" ]; then
-      stage_service_tree "$entry" "$dst_entry"
-    else
-      ln -s "$entry" "$dst_entry"
-    fi
-  done
 }
 
 echo "
