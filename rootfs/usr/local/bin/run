@@ -1,26 +1,4 @@
 #!/bin/sh
-set -eu
-
-prepare_s6_scandir() {
-  runtime_parent=
-
-  for candidate in /run /tmp; do
-    if [ -d "$candidate" ] && [ -w "$candidate" ]; then
-      runtime_parent="$candidate/s6"
-      break
-    fi
-  done
-
-  if [ -z "$runtime_parent" ]; then
-    echo "No writable runtime directory found for s6. Mount /tmp or /run as writable when using read_only." >&2
-    exit 1
-  fi
-
-  mkdir -p "$runtime_parent"
-  scan_dir="$(mktemp -d "$runtime_parent/scan.XXXXXX")"
-  cp -R /etc/s6.d/. "$scan_dir"/
-  printf '%s\n' "$scan_dir"
-}
 
 echo "
 ---------------------------------------------
@@ -34,8 +12,8 @@ A GNU Social-compatible microblogging server
 ---------------------------------------------
 UID/GID settings
 ---------------------------------------------
-User  ID : $(id -u)
-Group ID : $(id -g)
+User  ID : ${UID}
+Group ID : ${GID}
 ---------------------------------------------
 Logs location
 ---------------------------------------------
@@ -45,22 +23,14 @@ Web       : /mastodon/log/web.log
 ---------------------------------------------
 "
 
-if [ "${RUN_DB_MIGRATIONS:-true}" = "true" ]; then
+if [ "$RUN_DB_MIGRATIONS" = "true" ]; then
   echo "Running database migrations task..."
   bundle exec rake db:migrate
 fi
 
 echo "Executing process(es)..."
 if [ "$#" -eq 0 ]; then
-  runtime_scandir="$(prepare_s6_scandir)"
-  echo "Using s6 scan directory: ${runtime_scandir}"
-  exec s6-svscan "$runtime_scandir"
+    exec s6-svscan /etc/s6.d
+else
+    exec "$@"
 fi
-
-if [ "$#" -eq 2 ] && [ "$1" = "s6-svscan" ] && [ "$2" = "/etc/s6.d" ]; then
-  runtime_scandir="$(prepare_s6_scandir)"
-  echo "Using s6 scan directory: ${runtime_scandir}"
-  exec s6-svscan "$runtime_scandir"
-fi
-
-exec "$@"
