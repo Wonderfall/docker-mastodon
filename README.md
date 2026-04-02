@@ -94,13 +94,6 @@ services:
       - /wherever/docker/mastodon/logs:/mastodon/log
       - /wherever/docker/resolv.conf:/etc/resolv.conf:ro
     tmpfs:
-      - /etc/s6.d/.s6-svscan:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
-      - /etc/s6.d/sidekiq/event:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
-      - /etc/s6.d/sidekiq/supervise:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
-      - /etc/s6.d/streaming/event:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
-      - /etc/s6.d/streaming/supervise:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
-      - /etc/s6.d/web/event:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
-      - /etc/s6.d/web/supervise:size=10M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
       - /tmp:size=256M,mode=0770,uid=991,gid=991,noexec,nosuid,nodev
 
   mastodon-redis:
@@ -144,5 +137,8 @@ services:
       - POSTGRES_DB=mastodon
       - POSTGRES_PASSWORD=supersecretpassword
 ```
+
+This image stages the immutable `/etc/s6.d` service tree into a writable runtime directory under `/run` or `/tmp` before starting `s6-svscan`, so `read_only: true` no longer needs the per-service `tmpfs` mounts under `/etc`.
+In the compose example above, the existing writable `/tmp` mount is sufficient for that runtime state.
 
 *This image has been tested and works great with the [gVisor runtime](https://gvisor.dev/).*
