@@ -19,7 +19,7 @@ Images are scanned every day by [Trivy](https://github.com/aquasecurity/trivy) f
 
 ## Tags
 - `latest` : latest Mastodon version (or working commit)
-- `x.x` : latest Mastodon x.x (e.g. `4.5`)
+- `x.x` : latest Mastodon x.x (e.g. `4.6`)
 - `x.x.x` : Mastodon x.x.x (including release candidates)
 
 You can always have a glance [here](https://github.com/users/Wonderfall/packages/container/package/mastodon).
@@ -27,13 +27,12 @@ You can always have a glance [here](https://github.com/users/Wonderfall/packages
 ## Build-time variables
 |          Variable         |         Description        |       Default      |
 | ------------------------- | -------------------------- | ------------------ |
-| **MASTODON_VERSION**      | Mastodon release tag       |       `4.5.8`      |
+| **MASTODON_VERSION**      | Mastodon release tag       |       `4.6.3`      |
 | **MASTODON_REPOSITORY**   | source of Mastodon         | `mastodon/mastodon`|
-| **MASTODON_COMMIT**       | expected Mastodon commit   | `38e7bb9b866b5d207a511de093de25536f13e9c4` |
-| **MASTODON_GPG_FINGERPRINT** | trusted Mastodon signing key | `968479A1AFF927E37D1A566BB5690EEEBB952194` |
-| **RUBY_VERSION**          | Ruby base image tag        |        `3.4`       |
+| **MASTODON_COMMIT**       | expected Mastodon commit   | `eeb68053a83894190eefae178a661018b9859494` |
+| **RUBY_VERSION**          | Ruby base image tag        |        `4.0`       |
 | **NODE_VERSION**          | Node.js base image tag     |        `24`        |
-| **ALPINE_VERSION**        | Alpine base image tag      |       `3.23`       |
+| **ALPINE_VERSION**        | Alpine base image tag      |       `3.24`       |
 | **HARDENED_MALLOC_TAG**  | hardened_malloc tag        |   `2026030100`     |
 | **HARDENED_MALLOC_COMMIT** | expected hardened_malloc commit | `3bee8d3e0e4fd82b684521891373f40ab4982a5a` |
 

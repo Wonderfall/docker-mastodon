@@ -1,12 +1,11 @@
 # -------------- Build-time variables --------------
-ARG MASTODON_VERSION=4.5.9
+ARG MASTODON_VERSION=4.6.3
 ARG MASTODON_REPOSITORY=mastodon/mastodon
-ARG MASTODON_COMMIT=ff7266cf38935cea896db714d94c4ca3803d7744
-ARG MASTODON_GPG_FINGERPRINT=968479A1AFF927E37D1A566BB5690EEEBB952194
+ARG MASTODON_COMMIT=eeb68053a83894190eefae178a661018b9859494
 
-ARG RUBY_VERSION=3.4
+ARG RUBY_VERSION=4.0
 ARG NODE_VERSION=24
-ARG ALPINE_VERSION=3.23
+ARG ALPINE_VERSION=3.24
 ARG HARDENED_MALLOC_TAG=2026030100
 ARG HARDENED_MALLOC_COMMIT=3bee8d3e0e4fd82b684521891373f40ab4982a5a
 
@@ -41,7 +40,6 @@ RUN apk -U upgrade \
     ffmpeg \
     file \
     icu-libs \
-    imagemagick \
     libidn \
     libpq \
     libstdc++ \
@@ -91,13 +89,11 @@ FROM alpine:${ALPINE_VERSION} AS mastodon-source
 ARG MASTODON_VERSION
 ARG MASTODON_REPOSITORY
 ARG MASTODON_COMMIT
-ARG MASTODON_GPG_FINGERPRINT
 
 COPY patches/mastodon-vite-blurhash.patch /tmp/mastodon-vite-blurhash.patch
-COPY signing/github-web-flow.gpg /tmp/web-flow.gpg
 
 RUN apk -U upgrade \
- && apk add git gnupg patch \
+ && apk add git patch \
  && git init -q /tmp/mastodon \
  && cd /tmp/mastodon \
  && git remote add origin https://github.com/${MASTODON_REPOSITORY}.git \
@@ -105,17 +101,10 @@ RUN apk -U upgrade \
  && git checkout --detach v${MASTODON_VERSION} \
  && rm -rf /var/cache/apk/*
 
-RUN --network=none GNUPGHOME="$(mktemp -d)" \
- && export GNUPGHOME \
- && gpg --batch --with-colons --import-options show-only --import /tmp/web-flow.gpg \
-    | awk -F: '$1 == "fpr" { print $10 }' \
-    | grep -Fqx "${MASTODON_GPG_FINGERPRINT}" \
- && gpg --batch --import /tmp/web-flow.gpg \
- && cd /tmp/mastodon \
+RUN --network=none cd /tmp/mastodon \
  && test "$(git rev-parse HEAD)" = "${MASTODON_COMMIT}" \
- && git verify-commit HEAD \
  && patch -p1 < /tmp/mastodon-vite-blurhash.patch \
- && rm -rf .git "$GNUPGHOME" /tmp/web-flow.gpg /tmp/mastodon-vite-blurhash.patch
+ && rm -rf .git /tmp/mastodon-vite-blurhash.patch
 
 
 ### Build Mastodon application and assets
@@ -137,6 +126,7 @@ RUN apk -U upgrade \
     python3 \
     yaml-dev \
  && bundle config build.nokogiri --use-system-libraries \
+ && bundle config build.charlock_holmes --with-cxxflags=-std=c++17 \
  && bundle config set --local clean 'true' \
  && bundle config set --local deployment 'true' \
  && bundle config set --local without 'test development' \
