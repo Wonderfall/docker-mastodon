@@ -27,9 +27,9 @@ You can always have a glance [here](https://github.com/users/Wonderfall/packages
 ## Build-time variables
 |          Variable         |         Description        |       Default      |
 | ------------------------- | -------------------------- | ------------------ |
-| **MASTODON_VERSION**      | Mastodon release tag       |       `4.6.3`      |
+| **MASTODON_VERSION**      | Mastodon release tag       |       `4.6.4`      |
 | **MASTODON_REPOSITORY**   | source of Mastodon         | `mastodon/mastodon`|
-| **MASTODON_COMMIT**       | expected Mastodon commit   | `eeb68053a83894190eefae178a661018b9859494` |
+| **MASTODON_COMMIT**       | expected Mastodon commit   | `930aa9fee26bf9eaefe27826fa1061288d83373b` |
 | **RUBY_VERSION**          | Ruby base image tag        |        `4.0`       |
 | **NODE_VERSION**          | Node.js base image tag     |        `24`        |
 | **ALPINE_VERSION**        | Alpine base image tag      |       `3.24`       |
